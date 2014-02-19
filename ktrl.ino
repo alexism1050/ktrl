@@ -12,36 +12,34 @@ char foo; //trick for IDE.
 int MIDMIDISTEPS;
 //sensors
 
-int sensActiv[NSENSORS];  //used sensors
+int sensActiv[NSENSORS]; //used sensors
 int sensPort[NSENSORS]; //arduino analog port of the sensor
 
-int sensRaw[NSENSORS];  //raw value readed
+int sensRaw[NSENSORS]; //raw value readed
 int sensMidiPitch[NSENSORS];
 int sensMidiNote[NSENSORS];
 int sensSendMIDI[NSENSORS]; //1 or 0 if this sensor need the midi signal to be sended
 
-int sensMidiSteps[NSENSORS];  //midi steps that the sensor will use
+int sensMidiSteps[NSENSORS]; //midi steps that the sensor will use
 
 int sensRangMax[NSENSORS]; //ranges
-int sensRangMin[NSENSORS]; 
+int sensRangMaxDead[NSENSORS];
+
+int sensRangMin[NSENSORS];
+int sensRangMinDead[NSENSORS];
+
 int sensRangMem[NSENSORS]; //memory range at bottom.
+int sensRangMemDead[NSENSORS]; //memory range at bottom.
 
-int sensRangMidMem[NSENSORS]; //value at the mid of the range with the mem.
-
-int sensRangMidMaxMem[NSENSORS]; //range at the mid
-int sensRangMidMinMem[NSENSORS]; 
-
+int sensRangMidMem[NSENSORS]; //value at the mid of the range with the memRange.
+int sensRangMidMemMax[NSENSORS]; //range at the mid
+int sensRangMidMemMin[NSENSORS];
 
 int sensMode[NSENSORS]; //mode of each sensor
 
 //buttons
 
-int topButtonsValue[NTOPNBUTTONS]; 
-
-//auxiliars
-
-float rawToPitchSteps[NSENSORS];  //raw to pitch step
-float rawToPitchStepsMem[NSENSORS];  //raw to pitch step with memory range
+int topButtonsValue[NTOPNBUTTONS];
 
 //functions
 
@@ -55,134 +53,148 @@ void normalizeMidiPitch(int currentSen);
 
 void debug(int currentSen);
 
-void setup()
-{
-  Serial.begin(9600);  
-  for (int i = 0; i<NSENSORS; i++) {
+void setup() {
+    Serial.begin(9600);
+    for (int currentSens = 0; currentSens < NSENSORS; currentSens++) {
 
-    MIDMIDISTEPS = MIDISTEPS / 2;
+        MIDMIDISTEPS = MIDISTEPS / 2;
 
-    sensActiv[i]=1;
+        sensActiv[currentSens] = 1;
+        sensPort[currentSens] = currentSens;
+        sensRaw[currentSens] = 0;
+        sensMidiPitch[currentSens] = 0;
+        sensSendMIDI[currentSens] = 0;
+        sensMidiSteps[currentSens] = MIDISTEPS / MIDISTEPS;
 
-    sensPort[i]=i;    
+        sensRangMax[currentSens] = 600;
+        sensRangMem[currentSens] = 20;
+        sensRangMin[currentSens] = 10;
 
-    sensRaw[i]=0;
+        sensRangMaxDead[currentSens] = sensRangMax[currentSens] -((sensRangMax[currentSens] - sensRangMin[currentSens]) * DEADZONEGENERAL);
+        sensRangMemDead[currentSens] = sensRangMem[currentSens] +((sensRangMax[currentSens] - sensRangMin[currentSens]) * DEADZONEMEMORY);
+        sensRangMinDead[currentSens] = sensRangMin[currentSens] +((sensRangMax[currentSens] - sensRangMin[currentSens]) * DEADZONEGENERAL);
 
-    sensMidiSteps[i]= MIDISTEPS/MIDISTEPS;
+        sensRangMidMem[currentSens] = (sensRangMax[currentSens]-(sensRangMin[currentSens] + sensRangMem[currentSens])) / 2;
+        sensRangMidMemMax[currentSens] = sensRangMidMem[currentSens] + (sensRangMidMem[currentSens] * DEADZONERELATIVE);
+        sensRangMidMemMin[currentSens] = sensRangMidMem[currentSens] - (sensRangMidMem[currentSens] * DEADZONERELATIVE);
 
-    sensRangMax[i]=600;
-    sensRangMin[i]=20;
-    sensRangMem[i]=20;
+        sensMode[currentSens] = 0;
+    }
 
-    sensRangMidMem[i]=(sensRangMax[i]-(sensRangMin[i]+sensRangMem[i]))/2;    
-
-    sensRangMidMaxMem[i]=sensRangMidMem[i] + (sensRangMidMem[i]*DEADZONERELATIVE); 
-    sensRangMidMinMem[i]=sensRangMidMem[i] - (sensRangMidMem[i]*DEADZONERELATIVE); 
-
-    sensMode[i]=0;
-
-    rawToPitchSteps[i] = (sensRangMax[i] - sensRangMin[i])/(MIDISTEPS+0.0);
-    rawToPitchStepsMem[i] = (sensRangMax[i] - (sensRangMin[i]+sensRangMem[i]))/(MIDISTEPS+0.0);
-
-  }
-
-  sensMode[0]=2;
-  sensActiv[1]=0;
-  sensActiv[2]=0;
-  sensActiv[3]=0;
-  sensActiv[4]=0;
-  sensActiv[5]=0;
-  sensActiv[6]=0;
-  sensActiv[7]=0;
-
+    sensMode[0] = 0;
+    sensActiv[1] = 0;
+    sensActiv[2] = 0;
+    sensActiv[3] = 0;
+    sensActiv[4] = 0;
+    sensActiv[5] = 0;
+    sensActiv[6] = 0;
+    sensActiv[7] = 0;
 }
 
-void loop()
-{ 
-  readTopButtons();
-  if(topButtonsValue[CONFIGBUTTON]==1){ //configuration mode
-  }
-  else { //normal use mode
-    for (int currentSen = 0; currentSen<NSENSORS; currentSen++) {
-      if(sensActiv[currentSen]==1){
-        sensRaw[currentSen] = analogRead(sensPort[currentSen]);
-        rawToMidi(currentSen);        
-        setLigths();  
-        sendMidis();                 
-        delay(100);  
-        debug(currentSen);  
-      }
+void loop() {
+    readTopButtons();
+    if (topButtonsValue[CONFIGBUTTON] == 1) { //configuration mode
+    } else { //normal use mode
+        for (int currentSen = 0; currentSen < NSENSORS; currentSen++) {
+            if (sensActiv[currentSen] == 1) {
+                sensRaw[currentSen] = analogRead(sensPort[currentSen]);
+                rawToMidi(currentSen);
+                setLigths();
+                sendMidis();
+                delay(100);
+                debug(currentSen);
+            }
+        }
     }
-  }
 }
 
 
 //functions
 
-void readTopButtons(){
-  for (int currentTopButton = 0; currentTopButton<NTOPNBUTTONS; currentTopButton++) {
-  }
-}
-
-void rawToMidi(int currentSen){
-
-  if(sensMode[currentSen]==0){ //absolute         
-    sensMidiPitch[currentSen] = (sensRaw[currentSen]-sensRangMin[currentSen]) / rawToPitchSteps[currentSen];    
-    normalizeMidiPitch(currentSen);  
-    sensSendMIDI[currentSen] = 1;
-  }
-  else if(sensMode[currentSen]==1){ //absolute with memory
-    if (sensRaw[currentSen] >= sensRangMem[currentSen]){
-      sensMidiPitch[currentSen] = (sensRaw[currentSen]-(sensRangMin[currentSen]+sensRangMem[currentSen])) / rawToPitchStepsMem[currentSen];
-      normalizeMidiPitch(currentSen);      
-      sensSendMIDI[currentSen] = 1;
-    }    
-  }
-  else if(sensMode[currentSen]==2){ //relative mode
-    if (sensRaw[currentSen] > sensRangMem[currentSen]){
-      //if(sensRaw[currentSen]>sensRangMidMaxMem[currentSen] || sensRaw[currentSen]<sensRangMidMinMem[currentSen]){
-      int relativeAux = (sensRaw[currentSen]-(sensRangMin[currentSen]+sensRangMem[currentSen])) / rawToPitchStepsMem[currentSen];
-      if (relativeAux > MIDMIDISTEPS){ 
-        sensMidiPitch[currentSen] += (relativeAux - MIDMIDISTEPS);
-      }
-      else if (relativeAux < MIDMIDISTEPS){ 
-        sensMidiPitch[currentSen] -= (MIDISTEPS -  relativeAux);
-      }
-      normalizeMidiPitch(currentSen);
-      sensSendMIDI[currentSen] = 1;
-
-      // }
-
+void readTopButtons() {
+    for (int currentTopButton = 0; currentTopButton < NTOPNBUTTONS; currentTopButton++) {
     }
-  }
-}
-void sendMidis(){
-}
-void setLigths(){
 }
 
-void normalizeMidiPitch(int currentSen){	
-  //TODO sensMidiPitch[currentSen]%sensMidiSteps[currentSen];	
-  if ( sensMidiPitch[currentSen] > MIDISTEPS){
-    sensMidiPitch[currentSen] = MIDISTEPS;
-  }
-  else if ( sensMidiPitch[currentSen] < 0){
-    sensMidiPitch[currentSen] = 0;
-  }
+void rawToMidi(int currentSen) {
+    if (sensMode[currentSen] == 0) { //absolute   
+        if (sensRaw[currentSen] <= sensRangMaxDead[currentSen] && sensRaw[currentSen] >= sensRangMinDead[currentSen]) {
+            sensMidiPitch[currentSen] = (sensRaw[currentSen] - sensRangMinDead[currentSen]) / ((sensRangMaxDead[currentSen] - sensRangMinDead[currentSen]) / (MIDISTEPS + 0.0));
+        } else if (sensRaw[currentSen] > sensRangMaxDead[currentSen]) {
+            sensMidiPitch[currentSen] = MIDISTEPS;
+        } else {
+            sensMidiPitch[currentSen] = 0;
+        }
+        normalizeMidiPitch(currentSen);
+        sensSendMIDI[currentSen] = 1;
+    } else if (sensMode[currentSen] == 1) { //absolute with memory
+        if (sensRaw[currentSen] <= sensRangMaxDead[currentSen] && sensRaw[currentSen] >= sensRangMemDead[currentSen]) {
+            sensMidiPitch[currentSen] = (sensRaw[currentSen]-sensRangMinDead[currentSen]) / ((sensRangMaxDead[currentSen] - sensRangMinDead[currentSen]) / (MIDISTEPS + 0.0))+0.0;
+            sensSendMIDI[currentSen] = 1;
+        } else if (sensRaw[currentSen] > sensRangMaxDead[currentSen]) {
+            sensMidiPitch[currentSen] = MIDMIDISTEPS;
+            sensSendMIDI[currentSen] = 1;
+        } else if (sensRaw[currentSen] < sensRangMemDead[currentSen] && sensRaw[currentSen] >= sensRangMem[currentSen]) {
+            sensMidiPitch[currentSen] = 0;
+            sensSendMIDI[currentSen] = 1;
+        } else {
+            sensSendMIDI[currentSen] = 0;
+        }
+        normalizeMidiPitch(currentSen);
+
+    } else if (sensMode[currentSen] == 2) { //relative mode
+        if (sensRaw[currentSen] > sensRangMem[currentSen]) {
+            //if(sensRaw[currentSen]>sensRangMidMaxMem[currentSen] || sensRaw[currentSen]<sensRangMidMinMem[currentSen]){
+            int relativeAux = (sensRaw[currentSen]-(sensRangMin[currentSen] + sensRangMem[currentSen])) / 0;
+            if (relativeAux > MIDMIDISTEPS) {
+                sensMidiPitch[currentSen] += (relativeAux - MIDMIDISTEPS);
+            } else if (relativeAux < MIDMIDISTEPS) {
+                sensMidiPitch[currentSen] -= (MIDISTEPS - relativeAux);
+            }
+            normalizeMidiPitch(currentSen);
+            sensSendMIDI[currentSen] = 1;
+
+            // }
+
+        }
+    }
+}
+
+void sendMidis() {
+}
+
+void setLigths() {
+}
+
+void normalizeMidiPitch(int currentSen) {
+    //TODO sensMidiPitch[currentSen]%sensMidiSteps[currentSen];	
+    if (sensMidiPitch[currentSen] > MIDISTEPS) {
+        sensMidiPitch[currentSen] = MIDISTEPS;
+    } else if (sensMidiPitch[currentSen] < 0) {
+        sensMidiPitch[currentSen] = 0;
+    }
 
 }
 
-void debug(int currentSen){
+void debug(int currentSen) {
 
-  Serial.begin(9600);
-  Serial.print("SEN: ");
-  Serial.print(currentSen);
-  Serial.print(" RAW: \t");
-  Serial.print(sensRaw[currentSen]);
-  Serial.print("\tP: \t");
-  Serial.print(sensMidiPitch[currentSen]);
+    Serial.begin(9600);
+    Serial.print("SEN: ");
+    Serial.print(currentSen);
+    Serial.print(" RAW: \t");
+    Serial.print(sensRaw[currentSen]);
+    Serial.print("\tP: \t");
+    Serial.print(sensMidiPitch[currentSen]);
+    Serial.print("\tRMAX: \t");
+    Serial.print(sensRangMax[currentSen]);
+    Serial.print("\tRMAXDEAD: \t");
+    Serial.print(sensRangMaxDead[currentSen]);
+    Serial.print("\tRMIN: \t");
+    Serial.print(sensRangMin[currentSen]);
+    Serial.print("\tMINRANGEDEAD: \t");
+    Serial.print(sensRangMinDead[currentSen]);
 
-  Serial.println(" .");
+    Serial.println(" .");
 
 }
 
