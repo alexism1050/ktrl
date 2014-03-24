@@ -1,11 +1,11 @@
 char foo; //trick for IDE.
 
-#define CENTIMETERSMIN 6 //min distance to the sensor -2 centimeters
+#define CENTIMETERSMIN 8 //min distance to the sensor 
 #define CENTIMETERSMAX 30 //max distance to the sensor
 
 //exponential function approximation f(x)=a * (x/2)^b
-#define FUNCTIONA  1.0712816412 //Function parameters
-#define FUNCTIONB  -0.9283193071 //Function parameters
+#define FUNCTIONA  0.9847362291 //Function parameters
+#define FUNCTIONB  -1.13405974 //Function parameters
 float FUNCTIONMAXVALUE;
 float FUNCTIONMINVALUE;
 
@@ -13,7 +13,7 @@ float FUNCTIONMINVALUE;
 #define MIDISTEPS 127 
 int MIDMIDISTEPS = MIDISTEPS / 2;
 
-#define DEADZONEGENERAL 0.05 //% of deadzone to max and min value of sensors
+#define DEADZONEGENERAL 0.20 //% of deadzone to max and min value of sensors
 #define DEADZONEMEMORY 0.05 //% of memoryzone at the bottom of the sensors
 #define DEADZONERELATIVE 0.05 //% of deathzone at the middle on relative mode
 
@@ -80,7 +80,7 @@ void setup() {
         sensRaw[currentSens] = 0;
         sensLinear[currentSens] = 0;
 
-        sensRawRangMax[currentSens] = 518;
+        sensRawRangMax[currentSens] = 390;
         sensRawRangMin[currentSens] = 92;
 
         sensLinDeadTop = 1 - (1 * DEADZONEGENERAL);
@@ -119,7 +119,7 @@ void loop() {
                 linearToMidi(currentSen);
                 setLigths();
                 sendMidis();
-                delay(100);
+                delay(10);
                 //debug(currentSen);
             }
         }
@@ -137,7 +137,7 @@ void readTopButtons() {
 void linearToMidi(int currentSen) {
     if (sensMode[currentSen] == 0) { //absolute  
         if (sensLinear[currentSen] >= sensLinDeadBot && sensLinear[currentSen] <= sensLinDeadTop) {
-            int inRange = mapFloat(sensLinear[currentSen], sensLinDeadBot, sensLinDeadTop, 0, 1);
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBot, sensLinDeadTop, 0, 1);
             sensMidiPitch[currentSen] = inRange * MIDISTEPS;
             normalizeMidiPitch(currentSen);
         } else if (sensLinear[currentSen] > sensLinDeadTop) {
@@ -150,7 +150,7 @@ void linearToMidi(int currentSen) {
     } else if (sensMode[currentSen] == 1) { //absolute with memory
 
         if (sensLinear[currentSen] >= sensLinDeadBotMem && sensLinear[currentSen] <= sensLinDeadTop) {
-            int inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotMem, sensLinDeadTop, 0, 1);
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotMem, sensLinDeadTop, 0, 1);
             sensMidiPitch[currentSen] = inRange * MIDISTEPS;
             normalizeMidiPitch(currentSen);
             sensMidiSend[currentSen] = 1;
@@ -166,11 +166,11 @@ void linearToMidi(int currentSen) {
     } else if (sensMode[currentSen] == 2) { //relative mode
         if (sensLinear[currentSen] <= sensLinDeadMidMemMin && sensLinear[currentSen] >= sensLinDeadBotMem) { //--
 
-            int inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotMem, sensLinDeadMidMemMin, 0, 0.5);
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotMem, sensLinDeadMidMemMin, 0, 0.5);
 
         } else if (sensLinear[currentSen] >= sensLinDeadMidMemMax) { //++
 
-            int inRange = mapFloat(sensLinear[currentSen], sensLinDeadMidMemMax, 1, 0.5, 1);
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadMidMemMax, 1, 0.5, 1);
 
         } else {
 
