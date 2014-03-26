@@ -136,42 +136,19 @@ void readTopButtons() {
 
 void linearToMidi(int currentSen) {
     if (sensMode[currentSen] == 0) { //absolute  
-        /*
-        if (sensLinear[currentSen] >= sensLinDeadBotHand && sensLinear[currentSen] <= sensLinDeadTop) {
-            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotHand, sensLinDeadTop, 0, 1);
+        if (sensLinear[currentSen] >= sensLinDeadTop) {
+            sensMidiPitch[currentSen] = MIDISTEPS;
+            sensMidiSend[currentSen] = 1;
+        } else if (sensLinear[currentSen] > sensLinDeadBot) {
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBot, sensLinDeadTop, 0.0, 1.0);
             sensMidiPitch[currentSen] = inRange * MIDISTEPS;
             normalizeMidiPitch(currentSen);
             sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] > sensLinDeadTop) {
-            sensMidiPitch[currentSen] = MIDISTEPS;
-            sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] < sensLinDeadBotHand && sensLinear[currentSen] >= sensLinDeadBot) {
-            sensMidiPitch[currentSen] = 0;
-            sensMidiSend[currentSen] = 1;
-        } else if (sensMidiPitch[currentSen] != 0) {
-            sensMidiPitch[currentSen] = 0;
-            sensMidiSend[currentSen] = 1;
         } else {
-            //do nothing
-        }
-         */
-
-        if (sensLinear[currentSen] >= sensLinDeadBotHand && sensLinear[currentSen] <= sensLinDeadTop) {
-            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotHand, sensLinDeadTop, 0, 1);
-            sensMidiPitch[currentSen] = inRange * MIDISTEPS;
-            normalizeMidiPitch(currentSen);
-            sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] > sensLinDeadTop) {
-            sensMidiPitch[currentSen] = MIDISTEPS;
-            sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] < sensLinDeadBotHand && sensLinear[currentSen] >= sensLinDeadBot) {
-            sensMidiPitch[currentSen] = 0;
-            sensMidiSend[currentSen] = 1;
-        } else if (sensMidiPitch[currentSen] != 0) {
-            sensMidiPitch[currentSen] = 0;
-            sensMidiSend[currentSen] = 1;
-        } else {
-            //do nothing
+            if (sensMidiPitch[currentSen] != 0) {
+                sensMidiPitch[currentSen] = 0;
+                sensMidiSend[currentSen] = 1;
+            }
         }
 
     } else if (sensMode[currentSen] == 1) { //absolute with memory
