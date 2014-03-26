@@ -13,7 +13,7 @@ float FUNCTIONMINVALUE;
 #define MIDISTEPS 127 
 int MIDMIDISTEPS = MIDISTEPS / 2;
 
-#define DEADZONEGENERAL 0.20 //% of deadzone to max and min value of sensors
+#define DEADZONEGENERAL 0.05 //% of deadzone to max and min value of sensors
 #define DEADZONEMEMORY 0.05 //% of memoryzone at the bottom of the sensors
 #define DEADZONERELATIVE 0.05 //% of deathzone at the middle on relative mode
 
@@ -216,7 +216,7 @@ void rawToLinear(int currentSen) {
 
     float inRangeRaw = mapFloat(sensRaw[currentSen], sensRawRangMin[currentSen], sensRawRangMax[currentSen], FUNCTIONMINVALUE, FUNCTIONMAXVALUE);
     double distance = pow((((pow(2, FUNCTIONB)) * inRangeRaw) / FUNCTIONA), (1 / FUNCTIONB));
-    float linearValue = mapFloat(distance, CENTIMETERSMIN, CENTIMETERSMAX, 0.0, 1.0);
+    float linearValue = mapFloat(distance, CENTIMETERSMIN, CENTIMETERSMAX, 1.0, 0.0);
     sensLinear[currentSen] = linearValue;
 
     Serial.begin(9600);
