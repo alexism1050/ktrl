@@ -24,28 +24,18 @@ int MIDMIDISTEPS = MIDISTEPS / 2;
 
 int sensActiv[NSENSORS]; //used sensors
 int sensPort[NSENSORS]; //arduino analog port of the sensor
-
 float sensMidiSteps[NSENSORS]; //the steps for the midi on this sensor.
-
 int sensRaw[NSENSORS]; //raw value readed
 float sensLinear[NSENSORS]; //raw to a linear value from 0.0 to 1.0
-
 int sensRawRangMax[NSENSORS]; //ranges of the raw value
 int sensRawRangMin[NSENSORS];
-
-//float sensRawFunctionMax[NSENSORS]; //ranges of the function value
-//float sensRawFunctionMin[NSENSORS];
-
 float sensLinDeadTop;
 float sensLinDeadBot;
 float sensLinDeadBotHand;
-
 float sensLinDeadMidHand;
 float sensLinDeadMidHandMax;
 float sensLinDeadMidHandMin;
-
 int sensMode[NSENSORS]; //mode of each sensor
-
 int sensMidiPitch[NSENSORS];
 int sensMidiNote[NSENSORS];
 int sensMidiSend[NSENSORS]; //1 or 0 if this sensor need the midi signal to be sended
@@ -61,43 +51,32 @@ void rawToLinear(int currentSen);
 void sendMidi(int currentSen);
 void setLigths();
 void normalizeMidiPitch(int currentSen);
-
 void debug(int currentSen);
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max);
 
 void setup() {
     Serial.begin(9600);
-
     FUNCTIONMAXVALUE = FUNCTIONA * pow((CENTIMETERSMIN / 2.0), FUNCTIONB);
     FUNCTIONMINVALUE = FUNCTIONA * pow((CENTIMETERSMAX / 2.0), FUNCTIONB);
-
     for (int currentSens = 0; currentSens < NSENSORS; currentSens++) {
-
         sensActiv[currentSens] = 1;
         sensPort[currentSens] = currentSens;
         sensMidiSteps[currentSens] = 1;
-
         sensRaw[currentSens] = 0;
         sensLinear[currentSens] = 0;
-
         sensRawRangMax[currentSens] = 390;
         sensRawRangMin[currentSens] = 92;
-
         sensLinDeadTop = 1 - (1 * DEADZONEGENERAL);
         sensLinDeadBot = 1 * DEADZONEGENERAL;
         sensLinDeadBotHand = sensLinDeadBot + (1 * DEADZONENOHAND);
-
         sensLinDeadMidHand = mapFloat(0.5, 0.0, 1.0, sensLinDeadBotHand, 1.0);
-
         sensLinDeadMidHandMax = sensLinDeadMidHand + (1 * DEADZONERELATIVE);
         sensLinDeadMidHandMin = sensLinDeadMidHand - (1 * DEADZONERELATIVE);
-
         sensMode[currentSens] = 0;
         sensMidiPitch[currentSens] = 0;
         sensMidiNote[currentSens] = 0;
         sensMidiSend[currentSens] = 0;
     }
-
     sensMode[0] = 0;
     sensActiv[1] = 0;
     sensActiv[2] = 0;
@@ -144,29 +123,23 @@ void linearToMidi(int currentSen) {
             sensMidiPitch[currentSen] = inRange * MIDISTEPS;
             normalizeMidiPitch(currentSen);
             sensMidiSend[currentSen] = 1;
-        } else {
-            if (sensMidiPitch[currentSen] != 0) {
-                sensMidiPitch[currentSen] = 0;
-                sensMidiSend[currentSen] = 1;
-            }
+        } else if (sensMidiPitch[currentSen] != 0) {
+            sensMidiPitch[currentSen] = 0;
+            sensMidiSend[currentSen] = 1;
         }
-
-    } else if (sensMode[currentSen] == 1) { //absolute with memory
-
-        if (sensLinear[currentSen] >= sensLinDeadBotHand && sensLinear[currentSen] <= sensLinDeadTop) {
-            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotHand, sensLinDeadTop, 0, 1);
+    } else if (sensMode[currentSen] == 1) { //absolute with memory   
+        if (sensLinear[currentSen] >= sensLinDeadTop) {
+            sensMidiPitch[currentSen] = MIDISTEPS;
+            sensMidiSend[currentSen] = 1;
+        } else if (sensLinear[currentSen] > sensLinDeadBotHand) {
+            float inRange = mapFloat(sensLinear[currentSen], sensLinDeadBotHand, sensLinDeadTop, 0.0, 1.0);
             sensMidiPitch[currentSen] = inRange * MIDISTEPS;
             normalizeMidiPitch(currentSen);
             sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] > sensLinDeadTop) {
-            sensMidiPitch[currentSen] = MIDISTEPS;
-            sensMidiSend[currentSen] = 1;
-        } else if (sensLinear[currentSen] < sensLinDeadBotHand && sensLinear[currentSen] >= sensLinDeadBot) {
+        } else if (sensLinear[currentSen] > sensLinDeadBot) {
             sensMidiPitch[currentSen] = 0;
             sensMidiSend[currentSen] = 1;
-        } else {
-            //do nothing
-        }
+        }        
     } else if (sensMode[currentSen] == 2) { //relative mode
         if (sensLinear[currentSen] <= sensLinDeadMidHandMin && sensLinear[currentSen] >= sensLinDeadBotHand) { //--
 
@@ -223,7 +196,7 @@ void rawToLinear(int currentSen) {
     float inRangeRaw = mapFloat(sensRaw[currentSen], sensRawRangMin[currentSen], sensRawRangMax[currentSen], FUNCTIONMINVALUE, FUNCTIONMAXVALUE);
     double distance = pow((((pow(2, FUNCTIONB)) * inRangeRaw) / FUNCTIONA), (1 / FUNCTIONB));
     float linearValue = mapFloat(distance, CENTIMETERSMIN, CENTIMETERSMAX, 1.0, 0.0);
-    constrain(linearValue, 0.0, 1.0);
+    linearValue = constrain(linearValue, 0.0, 1.0);
     sensLinear[currentSen] = linearValue;
 
     Serial.begin(9600);
