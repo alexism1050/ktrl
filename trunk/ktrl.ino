@@ -1,7 +1,8 @@
 char foo; //trick for IDE.
 
 #define CENTIMETERSMIN 6 //min distance to the sensor 
-#define CENTIMETERSMAX 28 //max distance to the sensor
+#define CENTIMETERSMAX 29 //max distance to the sensor
+#define NMEASURES 5
 
 //exponential function approximation f(x)=a * (x/2)^b
 #define FUNCTIONA  0.9847362291 //Function parameters
@@ -26,6 +27,7 @@ int sensActiv[NSENSORS]; //used sensors
 int sensPort[NSENSORS]; //arduino analog port of the sensor
 float sensMidiSteps[NSENSORS]; //the steps for the midi on this sensor.
 int sensRaw[NSENSORS]; //raw value readed
+int sensRawMeasures[NSENSORS][NMEASURES];
 float sensLinear[NSENSORS]; //raw to a linear value from 0.0 to 1.0
 int sensRawRangMax[NSENSORS]; //ranges of the raw value
 int sensRawRangMin[NSENSORS];
@@ -65,7 +67,7 @@ void setup() {
         sensRaw[currentSens] = 0;
         sensLinear[currentSens] = 0;
         sensRawRangMax[currentSens] = 390;
-        sensRawRangMin[currentSens] = 92;
+        sensRawRangMin[currentSens] = 200;
         sensLinDeadTop = 1 - (1 * DEADZONEGENERAL);
         sensLinDeadBot = 1 * DEADZONEGENERAL;
         sensLinDeadBotHand = sensLinDeadBot + (1 * DEADZONENOHAND);
@@ -78,7 +80,8 @@ void setup() {
         sensMidiSend[currentSens] = 0;
     }
     sensMode[0] = 0;
-    sensActiv[1] = 0;
+    sensActiv[0] = 0;
+    sensActiv[1] = 1;
     sensActiv[2] = 0;
     sensActiv[3] = 0;
     sensActiv[4] = 0;
@@ -91,14 +94,35 @@ void loop() {
     readTopButtons();
     if (topButtonsValue[CONFIGBUTTON] == 1) { //configuration mode
     } else { //normal use mode
+        for (int currentMeasure = 0; currentMeasure < NMEASURES; currentMeasure++) {
+            for (int currentSen = 0; currentSen < NSENSORS; currentSen++) {
+                if (sensActiv[currentSen] == 1) {
+                    sensRawMeasures[currentSen][currentMeasure] = analogRead(sensPort[currentSen]);
+                }
+            }
+        }
         for (int currentSen = 0; currentSen < NSENSORS; currentSen++) {
             if (sensActiv[currentSen] == 1) {
-                sensRaw[currentSen] = analogRead(sensPort[currentSen]);
+                int done = 0;
+                while (done != 1) {
+                    done = 1;
+                    for (int j = 0; j < (NMEASURES); j++) {
+                        if (sensRawMeasures[j] > sensRawMeasures[(j + 1)]) {
+                            int temp = sensRawMeasures[currentSen][(j + 1)];
+                            sensRawMeasures[currentSen][(j + 1)] = sensRawMeasures[currentSen][j];
+                            sensRawMeasures[currentSen][j] = temp;
+                            done = 0;
+                        }
+                    }
+                }
+                sensRaw[currentSen] = sensRawMeasures[currentSen][(NMEASURES / 2) + 1];
+
+                //sensRaw[currentSen] = analogRead(sensPort[currentSen]);
                 rawToLinear(currentSen);
                 linearToMidi(currentSen);
                 setLigths();
-                sendMidi();
-                delay(10);
+                sendMidi(currentSen);
+                //delay(50);
                 //debug(currentSen);
             }
         }
@@ -139,7 +163,7 @@ void linearToMidi(int currentSen) {
         } else if (sensLinear[currentSen] > sensLinDeadBot) {
             sensMidiPitch[currentSen] = 0;
             sensMidiSend[currentSen] = 1;
-        }        
+        }
     } else if (sensMode[currentSen] == 2) { //relative mode
         if (sensLinear[currentSen] <= sensLinDeadMidHandMin && sensLinear[currentSen] >= sensLinDeadBotHand) { //--
 
