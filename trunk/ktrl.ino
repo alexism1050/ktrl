@@ -4,7 +4,7 @@ char foo; //trick for IDE.
 
 #define CENTIMETERSMIN 6 //min distance to the sensor 
 #define CENTIMETERSMAX 29 //max distance to the sensor
-#define NMEASURES 6
+#define NMEASURES 7
 
 //exponential function approximation f(x)=a * (x/2)^b
 #define FUNCTIONA  0.9847362291 //Function parameters
@@ -168,7 +168,7 @@ void setup() {
         sensMidiSteps[currentSens] = 1;
         sensRaw[currentSens] = 0;
         sensLinear[currentSens] = 0;
-        sensRawRangMax[currentSens] = 390;
+        sensRawRangMax[currentSens] = 330;
         sensRawRangMin[currentSens] = 120;
         sensLinDeadTop = 1 - (1 * DEADZONEGENERAL);
         sensLinDeadBot = 1 * DEADZONEGENERAL;
@@ -182,7 +182,27 @@ void setup() {
         sensMidiSend[currentSens] = 0;
     }
    
-
+  
+   sensRawRangMin[0] = 130;
+   sensRawRangMin[3] = 125;
+   sensRawRangMin[4] = 125;
+   /*sensRawRangMin[1] = 96;
+   sensRawRangMin[2] = 88;
+   sensRawRangMin[3] = 87;
+   sensRawRangMin[4] = 87;
+   sensRawRangMin[5] = 87;
+   sensRawRangMin[6] = 87;
+   sensRawRangMin[7] = 87;
+   
+   sensRawRangMax[0] = 330;
+   sensRawRangMax[1] = 390;
+   sensRawRangMax[2] = 390;
+   sensRawRangMax[3] = 390;
+   sensRawRangMax[4] = 390;
+   sensRawRangMax[5] = 390;
+   sensRawRangMax[6] = 390;
+   sensRawRangMax[7] = 390;*/
+   
     sensPort[0] = A15;
     sensPort[1] = A14;
     sensPort[2] = A12;
@@ -270,6 +290,9 @@ void loop() {
             for (int currentSen = 0; currentSen < NSENSORS; currentSen++) {
                 if (sensActiv[currentSen] == 1) {
                     sensRawMeasures[currentSen][currentMeasure] = analogRead(sensPort[currentSen]);
+                    delayMicroseconds(2063);
+
+                 
                 }
             }
         }
@@ -289,7 +312,7 @@ void loop() {
                         }
                     }
                 }
-                sensRaw[currentSen] = (sensRawMeasures[currentSen][(NMEASURES / 2) + 1] + sensRawMeasures[currentSen][(NMEASURES / 2)] + sensRawMeasures[currentSen][(NMEASURES / 2)-1])/3;
+                sensRaw[currentSen] = (sensRawMeasures[currentSen][(NMEASURES / 2) + 1]+ sensRawMeasures[currentSen][(NMEASURES / 2)] +sensRawMeasures[currentSen][(NMEASURES / 2) - 1])/3;
 
                 //sensRaw[currentSen] = analogRead(sensPort[currentSen]);
                 rawToLinear(currentSen);
@@ -297,7 +320,7 @@ void loop() {
                 sendMidi(currentSen);
                 setLigths(currentSen); 
                 sendFrontLEDS(currentSen);
-                delay(10);
+                //delay(1);
                 //debugMode();
                 //debug(currentSen);
             }
@@ -311,7 +334,7 @@ void loop() {
 void sendMidi(int currentSen) {
   if(sensMidiSend[currentSen] == 1)
   {
-    int CC = currentSen + 16;
+    int CC = currentSen + 20;
     MIDI.sendControlChange(CC,sensMidiPitch[currentSen],1);
     sensMidiSend[currentSen] = 0;
   }
@@ -324,7 +347,6 @@ void readTopButtons() {
 
 void linearToMidi(int currentSen) {
   
-   
   
     if (mode == 0) { //absolute  
         if (sensLinear[currentSen] >= sensLinDeadTop) {
@@ -355,13 +377,14 @@ void linearToMidi(int currentSen) {
     } else if (mode == 2) { //NEW mode
     
     
-       for(int i=0; i<NSENSORS;i++){
+             for(int i=0; i<NSENSORS;i++){
        
        if(groupButtonValue[i]==1){ 
          sensMidiSend[i] = 1;
          sensMidiPitch[i]=0;       
        }
      } 
+    
     
        /* if (sensLinear[currentSen] <= sensLinDeadMidHandMin && sensLinear[currentSen] >= sensLinDeadBotHand) { //--
 
@@ -378,10 +401,11 @@ void linearToMidi(int currentSen) {
      mode=1;
     }
     
-     if(groupButtonValue[currentSen]==0){
+     if(groupButtonValue[currentSen]==0 && sensMidiPitch[currentSen]>0){
      for(int i=0; i<NSENSORS;i++){
        
-       if(groupButtonValue[i]==0){
+       if(groupButtonValue[i]==0 && mode==1){
+         
          sensMidiSend[i] = 1;
          sensMidiPitch[i]=sensMidiPitch[currentSen];       
        }
@@ -849,13 +873,13 @@ int convert_to_led(unsigned int received) // received value by the sensors
 
   unsigned int sent=0x0000; // value to send to the leds
   
-  if (received<5)
+  if (received==0)
   {
     sent=0x00001;
       return sent;
 
   }
-  else if(received>=5 && received<=15){
+  else if(received>=1 && received<=15){
 
     sent=0x00002;
       return sent;
@@ -926,7 +950,7 @@ void sendFrontLEDS(int currentSen)
   // To use if we want to control leds one by one
   // infos http://learn.adafruit.com/adafruit-arduino-lesson-4-eight-leds/brightness-control
   
-  if(sensMidiPitch[currentSen]>10){
+  if(sensMidiPitch[currentSen]>0){
     bitSet(leds, currentSen);
     updateShiftRegister();
     //delay(500);
