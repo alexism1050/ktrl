@@ -1,0 +1,17 @@
+in consts.py
+
+make sure the input and output name are the same as in ableton, in the Midi Preference window : example : Input : nanoKONTROL 2 (input), Output : nanoKONTROL 2 (output).
+
+make sure in consts.py that the macro 1 refers to the correct CC : example : 
+GENERIC_ENC1 = 16
+GENERIC_ENC2 = 17
+GENERIC_ENC3 = 18
+GENERIC_ENC4 = 19
+GENERIC_ENC5 = 20
+GENERIC_ENC6 = 21
+GENERIC_ENC7 = 22
+GENERIC_ENC8 = 23
+
+means that macro 1 = CC16, macro 2 = CC17 etc.
+
+put the KTRL folder in : C:\ProgramData\Ableton\Live\Resources\MIDI Remote Scripts
